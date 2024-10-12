@@ -116,9 +116,6 @@ class RobotFloatingBase:
         def set_actuator_control(actuator_mjcf: mjcf.Element, ctrl):
             bound_actuator = self._mojo.physics.bind(actuator_mjcf)
             bound_actuator.ctrl += ctrl
-            if actuator_mjcf.ctrlrange is not None:
-                clipped = np.clip(bound_actuator.ctrl, *bound_actuator.ctrlrange)
-                bound_actuator.ctrl = clipped
 
         index = 0
         for actuator in self._position_actuators:

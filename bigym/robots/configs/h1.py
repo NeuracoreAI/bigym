@@ -68,7 +68,7 @@ H1_ACTUATORS = {
     "right_wrist": True,
 }
 STIFFNESS_XY = 1e4
-STIFFNESS_Z = 1e6
+STIFFNESS_Z = 1e5
 RANGE_DOF_Z = (0.4, 1.0)
 H1_FULL_BODY = FullBodyConfig(
     offset_position=np.array([0, 0, 0.98]),

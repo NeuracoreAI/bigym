@@ -33,4 +33,4 @@ class HandSide(Enum):
 
 
 TOLERANCE_ANGULAR = np.deg2rad(2)
-TOLERANCE_LINEAR = 1e-3
+TOLERANCE_LINEAR = 0.0025
