@@ -1,18 +1,17 @@
 import csv
-from multiprocessing import Pool
+from datetime import datetime
 from pathlib import Path
 from typing import Type
 
 
 from bigym.action_modes import JointPositionActionMode, PelvisDof
 from bigym.bigym_env import CONTROL_FREQUENCY_MIN, BiGymEnv
+from bigym.envs.manipulation import FlipCutlery
 from bigym.envs.reach_target import ReachTarget, ReachTargetDual, ReachTargetSingle
 from demonstrations.demo_store import DemoStore, DemoNotFoundError
 from demonstrations.demo_player import DemoPlayer
 from demonstrations.utils import Metadata
-from tools.shared.utils import ENVIRONMENTS
 
-PROCESSES = 12
 ACTION_MODES = [
     JointPositionActionMode(
         absolute=True,
@@ -37,7 +36,8 @@ def validate_all_demos(env_cls: Type[BiGymEnv]):
         try:
             print(f"{env.task_name}: trying to download demos...")
             demos = demo_store.get_demos(
-                metadata=Metadata.from_env(env, is_lightweight=True)
+                metadata=Metadata.from_env(env, is_lightweight=True),
+                shuffle=False,
             )
             print(f"{env.task_name}: downloaded {len(demos)} demos")
             for demo in demos:
@@ -47,8 +47,11 @@ def validate_all_demos(env_cls: Type[BiGymEnv]):
         except DemoNotFoundError:
             continue
 
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         with open(
-            output_directory / f"{env.task_name}_validation.csv", "w", newline=""
+            output_directory / f"{env.task_name}_{timestamp}_validation.csv",
+            "w",
+            newline="",
         ) as csvfile:
             log_writer = csv.writer(csvfile)
             if csvfile.tell() == 0:
@@ -62,8 +65,6 @@ def validate_all_demos(env_cls: Type[BiGymEnv]):
         return
 
 
-envs_to_validate = [
-    cls for cls in ENVIRONMENTS.values() if cls not in ENVIRONMENTS_TO_SKIP
-]
-with Pool(processes=PROCESSES) as pool:
-    pool.map(validate_all_demos, envs_to_validate)
+envs_to_validate = [FlipCutlery]
+for env in envs_to_validate:
+    validate_all_demos(env)
