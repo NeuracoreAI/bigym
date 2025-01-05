@@ -92,6 +92,7 @@ class DemoStore:
         metadata: Metadata,
         amount: int = -1,
         frequency: int = CONTROL_FREQUENCY_MAX,
+        shuffle: bool = True,
     ) -> list[Demo]:
         """Download the demos matching the metadata.
 
@@ -99,6 +100,7 @@ class DemoStore:
         :param amount: The amount of demos to get.
             If < 0, all demonstrations are returned.
         :param frequency: Demo control frequency.
+        :param shuffle: Shuffle demonstrations order randomly.
 
         :return: The demos matching the metadata.
         """
@@ -116,7 +118,7 @@ class DemoStore:
 
         # Check if demos with requested metadata are cached locally
         if demos_count == light_demos_count:
-            demos = self._get_demos(demos_dir, amount)
+            demos = self._get_demos(demos_dir, amount, shuffle)
             # Return locally cached demos
             if demos:
                 return demos
@@ -156,9 +158,11 @@ class DemoStore:
                     demo = DemoConverter.create_demo_in_new_env(demo, env)
                 self.cache_demo(demo, frequency)
                 pbar.update()
-        return self._get_demos(demos_dir, amount)
+        return self._get_demos(demos_dir, amount, shuffle)
 
-    def _get_demos(self, demos_dir: Path, amount: int) -> list[Demo]:
+    def _get_demos(
+        self, demos_dir: Path, amount: int, shuffle: bool = True
+    ) -> list[Demo]:
         self.pull_demos()
         if not demos_dir.exists():
             return []
@@ -167,7 +171,8 @@ class DemoStore:
             raise TooManyDemosRequestedError(amount, len(files))
         elif amount > 0:
             files = files[:amount]
-        np.random.shuffle(files)
+        if shuffle:
+            np.random.shuffle(files)
         return [Demo.from_safetensors(file) for file in files]
 
     def _get_demos_count(self, demos_dir: Path) -> int:
