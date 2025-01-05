@@ -166,7 +166,7 @@ class DemoStore:
         self.pull_demos()
         if not demos_dir.exists():
             return []
-        files = list(demos_dir.glob(f"*{SAFETENSORS_SUFFIX}"))
+        files = sorted(demos_dir.glob(f"*{SAFETENSORS_SUFFIX}"), key=lambda x: x.name)
         if amount > len(files):
             raise TooManyDemosRequestedError(amount, len(files))
         elif amount > 0:
