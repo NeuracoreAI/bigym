@@ -15,7 +15,7 @@ from demonstrations.utils import Metadata
 control_frequency = 50
 env = ReachTarget(
     action_mode=JointPositionActionMode(floating_base=True, absolute=True),
-    control_frequency=50,
+    control_frequency=control_frequency,
     observation_config=ObservationConfig(
         cameras=[
             CameraConfig("head", resolution=(84, 84)),
