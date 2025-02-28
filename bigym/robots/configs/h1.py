@@ -6,7 +6,12 @@ from bigym.action_modes import PelvisDof
 from bigym.const import ASSETS_PATH, HandSide
 from bigym.robots.animated_legs import H1AnimatedLegs
 
-from bigym.robots.config import ArmConfig, FloatingBaseConfig, RobotConfig
+from bigym.robots.config import (
+    ArmConfig,
+    FloatingBaseConfig,
+    RobotConfig,
+    FullBodyConfig,
+)
 from bigym.robots.configs.robotiq import ROBOTIQ_2F85, ROBOTIQ_2F85_FINE_MANIPULATION
 from bigym.robots.robot import Robot
 from bigym.utils.dof import Dof
@@ -65,6 +70,34 @@ H1_ACTUATORS = {
 STIFFNESS_XY = 1e4
 STIFFNESS_Z = 1e6
 RANGE_DOF_Z = (0.4, 1.0)
+H1_FULL_BODY = FullBodyConfig(
+    offset_position=np.array([0, 0, 0.98]),
+    reset_state=np.array(
+        [
+            0,  # left_hip_yaw
+            0,
+            -0.4,
+            0.8,
+            -0.4,
+            0,  # right_hip_yaw
+            0,
+            -0.4,
+            0.8,
+            -0.4,
+            0,  # torso
+            0,  # left_shoulder_pitch
+            0,
+            0,
+            0,
+            0,
+            0,  # right_shoulder_pitch
+            0,
+            0,
+            0,
+            0,
+        ]
+    ),
+)
 H1_FLOATING_BASE = FloatingBaseConfig(
     dofs={
         PelvisDof.X: Dof(
@@ -93,6 +126,20 @@ H1_FLOATING_BASE = FloatingBaseConfig(
     delta_range_position=(-0.01, 0.01),
     delta_range_rotation=(-0.05, 0.05),
     offset_position=np.array([0, 0, 1]),
+    reset_state=np.array(
+        [
+            0,  # left_shoulder_pitch
+            0,
+            0,
+            0,
+            0,
+            0,  # right_shoulder_pitch
+            0,
+            0,
+            0,
+            0,
+        ]
+    ),
     animated_legs_class=H1AnimatedLegs,
 )
 H1_CONFIG = RobotConfig(
@@ -100,6 +147,7 @@ H1_CONFIG = RobotConfig(
     delta_range=(-0.1, 0.1),
     position_kp=300,
     pelvis_body="pelvis",
+    full_body=H1_FULL_BODY,
     floating_base=H1_FLOATING_BASE,
     gripper=ROBOTIQ_2F85,
     arms={HandSide.LEFT: H1_LEFT_ARM, HandSide.RIGHT: H1_RIGHT_ARM},
@@ -112,6 +160,7 @@ H1_FINE_MANIPULATION_CONFIG = RobotConfig(
     delta_range=(-0.1, 0.1),
     position_kp=300,
     pelvis_body="pelvis",
+    full_body=H1_FULL_BODY,
     floating_base=H1_FLOATING_BASE,
     gripper=ROBOTIQ_2F85_FINE_MANIPULATION,
     arms={HandSide.LEFT: H1_LEFT_ARM, HandSide.RIGHT: H1_RIGHT_ARM},

@@ -48,8 +48,8 @@ class ArmConfig:
         site: The site on the robot where the gripper could be attached.
         links: A list of body links of the hand.
         wrist_dof: Optional wrist DOF which could be added to the arm.
-        offset_position: Mounting positional offset.
-        offset_euler: Mounting euler offset.
+        offset_position: Gripper mounting positional offset.
+        offset_euler: Gripper mounting euler offset.
     """
 
     site: str
@@ -67,7 +67,16 @@ class FloatingBaseConfig:
     delta_range_position: tuple[float, float]
     delta_range_rotation: tuple[float, float]
     offset_position: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    reset_state: Optional[np.ndarray] = None
     animated_legs_class: Optional[Type[AnimatedLegs]] = None
+
+
+@dataclass
+class FullBodyConfig:
+    """Configuration for full-body mode."""
+
+    offset_position: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    reset_state: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -79,7 +88,8 @@ class RobotConfig:
         delta_range: Action range for delta position action mode.
         position_kp: Stiffness of actuators for absolute position action mode.
         pelvis_body: Name of the pelvis body element.
-        floating_base: Configuration for the robot's floating base.
+        full_body: Config for full-body mode.
+        floating_base: Configuration for the floating base.
         gripper: Configuration for the robot's gripper.
         arms: Configuration for the robot's hands.
         actuators: Dictionary containing all actuators
@@ -92,6 +102,7 @@ class RobotConfig:
     delta_range: tuple[float, float]
     position_kp: float
     pelvis_body: str
+    full_body: FullBodyConfig
     floating_base: FloatingBaseConfig
     gripper: GripperConfig
     arms: dict[HandSide, ArmConfig]

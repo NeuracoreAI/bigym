@@ -9,6 +9,7 @@ from bigym.robots.config import (
     FloatingBaseConfig,
     GripperConfig,
     RobotConfig,
+    FullBodyConfig,
 )
 from bigym.robots.robot import Robot
 from bigym.utils.dof import Dof
@@ -35,6 +36,10 @@ GOOGLE_ROBOT_HAND = ArmConfig(
     ],
 )
 STIFFNESS = 1e4
+GOOGLE_ROBOT_FULL_BODY = FullBodyConfig(
+    offset_position=np.zeros(3),
+    reset_state=None,
+)
 GOOGLE_ROBOT_FLOATING_BASE = FloatingBaseConfig(
     dofs={
         PelvisDof.X: Dof(
@@ -69,6 +74,7 @@ GOOGLE_ROBOT = RobotConfig(
     delta_range=(-0.1, 0.1),
     position_kp=300,
     pelvis_body="base_link",
+    full_body=GOOGLE_ROBOT_FULL_BODY,
     floating_base=GOOGLE_ROBOT_FLOATING_BASE,
     gripper=GOOGLE_ROBOT_GRIPPER,
     arms={HandSide.RIGHT: GOOGLE_ROBOT_HAND},

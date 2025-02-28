@@ -93,6 +93,14 @@ class ActionMode(ABC):
         """
         pass
 
+    @abstractmethod
+    def reset(self, reset_state: np.ndarray):
+        """Reset state of the robot accordingly to the action mode.
+
+        :param reset_state: Target reset state of robot actuators.
+        """
+        pass
+
 
 class TorqueActionMode(ActionMode):
     """Control all joints through torque control.
@@ -139,6 +147,27 @@ class TorqueActionMode(ActionMode):
         for side, action in zip(self._robot.grippers, gripper_actions):
             self._robot.grippers[side].set_control(action)
         self._mojo.step()
+
+    def reset(self, reset_state: np.ndarray):
+        """See base."""
+        if len(reset_state) != len(self._robot.limb_actuators):
+            raise ValueError(
+                f"Mismatch between reset_state length "
+                f"({len(reset_state)}) "
+                f"and number of actuators ({len(self._robot.limb_actuators)}). "
+                f"Ensure reset_state matches the actuators count in the model."
+            )
+        for value, actuator in zip(reset_state, self._robot.limb_actuators):
+            if actuator.joint:
+                joint = self._mojo.physics.bind(actuator.joint)
+                joint.qpos = value
+                joint.qvel *= 0
+                joint.qacc *= 0
+            elif actuator.tendon:
+                warnings.warn(
+                    f"Tendon actuators are not fully supported "
+                    f"for {self.__class__.__name__} action mode."
+                )
 
 
 class JointPositionActionMode(ActionMode):
@@ -219,6 +248,36 @@ class JointPositionActionMode(ActionMode):
             self._step_until_reached()
         else:
             self._mojo.step()
+
+    def reset(self, reset_state: np.ndarray):
+        """See base."""
+        if len(reset_state) != len(self._robot.limb_actuators):
+            raise ValueError(
+                f"Mismatch between reset_state length "
+                f"({len(reset_state)}) "
+                f"and number of actuators ({len(self._robot.limb_actuators)}). "
+                f"Ensure reset_state matches the actuators count in the model."
+            )
+        for value, actuator in zip(reset_state, self._robot.limb_actuators):
+            if actuator.joint:
+                bound_joint = self._mojo.physics.bind(actuator.joint)
+                bound_joint.qpos = value
+                bound_joint.qvel *= 0
+                bound_joint.qacc *= 0
+            elif actuator.tendon:
+                if actuator.tendon.joint is None or len(actuator.tendon.joint) == 0:
+                    raise RuntimeError(
+                        "Currently only fixed tendons with joints are supported."
+                    )
+                joint_value = value / len(actuator.tendon.joint)
+                for tendon_joint in actuator.tendon.joint:
+                    value_coefficient = tendon_joint.coef
+                    bound_joint = self._mojo.physics.bind(tendon_joint.joint)
+                    bound_joint.qpos = joint_value / value_coefficient
+                    bound_joint.qvel *= 0
+                    bound_joint.qacc *= 0
+            bound_actuator = self._mojo.physics.bind(actuator)
+            bound_actuator.ctrl = value
 
     def _step_until_reached(self):
         """Step physics until the target position is reached."""

@@ -9,6 +9,7 @@ from bigym.robots.config import (
     FloatingBaseConfig,
     GripperConfig,
     RobotConfig,
+    FullBodyConfig,
 )
 from bigym.robots.robot import Robot
 from bigym.utils.dof import Dof
@@ -36,6 +37,10 @@ STRETCH_HAND = ArmConfig(
     ],
 )
 STIFFNESS = 1e4
+STRETCH_FULL_BODY = FullBodyConfig(
+    offset_position=np.zeros(3),
+    reset_state=None,
+)
 STRETCH_FLOATING_BASE = FloatingBaseConfig(
     dofs={
         PelvisDof.X: Dof(
@@ -56,6 +61,7 @@ STRETCH_FLOATING_BASE = FloatingBaseConfig(
     },
     delta_range_position=(-0.01, 0.01),
     delta_range_rotation=(-0.05, 0.05),
+    reset_state=np.array([0, 0, 0, 0, 0, 0]),
 )
 STRETCH_GRIPPER = GripperConfig(
     body="stretch/link_gripper_slider",
@@ -68,6 +74,7 @@ STRETCH_ROBOT = RobotConfig(
     delta_range=(-0.1, 0.1),
     position_kp=300,
     pelvis_body="base_link",
+    full_body=STRETCH_FULL_BODY,
     floating_base=STRETCH_FLOATING_BASE,
     gripper=STRETCH_GRIPPER,
     arms={HandSide.RIGHT: STRETCH_HAND},

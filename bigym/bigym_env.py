@@ -401,7 +401,7 @@ class BiGymEnv(gym.Env):
         self._update_seed(override_seed=seed)
         self._mojo.physics.reset()
         self._action = np.zeros_like(self._action)
-        self._robot.set_pose(self.RESET_ROBOT_POS, self.RESET_ROBOT_QUAT)
+        self._robot.reset(self.RESET_ROBOT_POS, self.RESET_ROBOT_QUAT)
         self._on_reset()
         return self.get_observation(), self.get_info()
 

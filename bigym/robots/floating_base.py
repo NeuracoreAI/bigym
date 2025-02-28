@@ -36,9 +36,7 @@ class RobotFloatingBase:
         self._config = config
         self._pelvis = pelvis
         self._mojo = mojo
-        self._offset_position = np.array(self._config.offset_position).astype(
-            np.float32
-        )
+        self._offset_position = np.array(self._config.offset_position)
         self._position_actuators: list[Optional[mjcf.Element]] = [None, None, None]
         self._rotation_actuators: list[Optional[mjcf.Element]] = [None, None, None]
 

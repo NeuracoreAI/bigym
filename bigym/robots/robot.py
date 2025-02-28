@@ -156,12 +156,23 @@ class Robot(ABC):
             return False
         return self._grippers[side].is_holding_object(other)
 
-    def set_pose(self, position: np.ndarray, orientation: np.ndarray):
+    def reset(self, position: np.ndarray, orientation: np.ndarray):
+        """Reset robot."""
+        self._set_pose(position, orientation)
+        reset_state = (
+            self.config.floating_base.reset_state
+            if self._action_mode.floating_base
+            else self.config.full_body.reset_state
+        )
+        if reset_state is not None:
+            self._action_mode.reset(reset_state)
+
+    def _set_pose(self, position: np.ndarray, orientation: np.ndarray):
         """Instantly set pose of the robot pelvis."""
         if self._action_mode.floating_base:
             self._floating_base.reset(position, orientation)
         else:
-            self._pelvis.set_position(position)
+            self._pelvis.set_position(position + self.config.full_body.offset_position)
             self._pelvis.set_quaternion(orientation)
 
     def get_limb_control_range(
