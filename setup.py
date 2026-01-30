@@ -25,7 +25,7 @@ core_requirements = [
     "gymnasium @ git+https://git@github.com/stepjam/Gymnasium.git@0.29.2",
     # pyquaternion doesn't support 2.x yet
     "numpy==1.26.*",
-    "safetensors==0.3.3",
+    "safetensors==0.6.2",
     # WARNING: recorded demos might break when updating Mujoco
     "mujoco==3.1.5",
     # needed for pyMJCF
