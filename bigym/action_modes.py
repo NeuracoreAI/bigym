@@ -189,6 +189,8 @@ class JointPositionActionMode(ActionMode):
         self,
         absolute: bool = False,
         block_until_reached: bool = False,
+        block_gripper_until_reached: bool = True,
+        gripper_tolerance: float = 0.05,
         floating_base: bool = True,
         floating_dofs: list[PelvisDof] = None,
     ):
@@ -197,6 +199,10 @@ class JointPositionActionMode(ActionMode):
         :param absolute: Use absolute or delta joint positions.
         :param block_until_reached: Continue stepping until the target
             position is reached or the step threshold is exceeded.
+        :param block_gripper_until_reached: Continue stepping until gripper
+            target state is reached or the step threshold is exceeded.
+        :param gripper_tolerance: Allowed gripper absolute error in normalized
+            gripper range before considering the target reached.
         """
         super().__init__(
             floating_base=floating_base,
@@ -204,6 +210,8 @@ class JointPositionActionMode(ActionMode):
         )
         self.absolute = absolute
         self.block_until_reached = block_until_reached
+        self.block_gripper_until_reached = block_gripper_until_reached
+        self.gripper_tolerance = gripper_tolerance
 
     def action_space(
         self, action_scale: float, seed: Optional[int] = None
@@ -244,7 +252,7 @@ class JointPositionActionMode(ActionMode):
         for side, action in zip(self._robot.grippers, gripper_actions):
             self._robot.grippers[side].set_control(action)
 
-        if self.block_until_reached:
+        if self.block_until_reached or self.block_gripper_until_reached:
             self._step_until_reached()
         else:
             self._mojo.step()
@@ -294,10 +302,15 @@ class JointPositionActionMode(ActionMode):
                 break
 
     def _is_target_state_reached(self):
-        if self.floating_base:
-            if not self._robot.floating_base.is_target_reached:
-                return False
-        for actuator in self._robot.limb_actuators:
-            if not is_target_reached(actuator, self._mojo.physics, TOLERANCE_ANGULAR):
-                return False
+        if self.block_until_reached:
+            if self.floating_base:
+                if not self._robot.floating_base.is_target_reached:
+                    return False
+            for actuator in self._robot.limb_actuators:
+                if not is_target_reached(actuator, self._mojo.physics, TOLERANCE_ANGULAR):
+                    return False
+        if self.block_gripper_until_reached:
+            for _, gripper in self._robot.grippers.items():
+                if not gripper.is_target_reached(self.gripper_tolerance):
+                    return False
         return True

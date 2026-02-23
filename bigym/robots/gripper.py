@@ -38,6 +38,7 @@ class Gripper:
         self._actuators: list[mjcf.Element] = []
         self._actuated_joints: list[mjcf.Element] = []
         self._pinch_site: Optional[Site] = None
+        self._target_ctrl: Optional[float] = None
 
         if self._config.model:
             self._body: Body = self._mojo.load_model(
@@ -115,10 +116,17 @@ class Gripper:
         if self._config.discrete:
             ctrl = np.round(ctrl)
         ctrl = np.interp(ctrl, self._NORMAL_RANGE, self._config.range)
+        self._target_ctrl = float(ctrl)
         for actuator in self._actuators:
             actuator = self._mojo.physics.bind(actuator)
-            ctrl = np.interp(ctrl, self._config.range, actuator.ctrlrange)
-            actuator.ctrl = ctrl
+            actuator_ctrl = np.interp(ctrl, self._config.range, actuator.ctrlrange)
+            actuator.ctrl = actuator_ctrl
+
+    def is_target_reached(self, tolerance: float) -> bool:
+        """Check if the gripper is sufficiently close to the last control target."""
+        if self._target_ctrl is None:
+            return True
+        return abs(self.qpos - self._target_ctrl) <= tolerance
 
     def _on_loaded(self, model: mjcf.RootElement):
         model.model += f"_{self._side.value.lower()}"
