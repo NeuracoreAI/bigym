@@ -31,7 +31,7 @@ class BiGymRenderer(MujocoRenderer):
                 self.viewer = BiGymWindowViewer(self.model, self.data)
 
             elif render_mode in {"rgb_array", "depth_array"}:
-                self.viewer = OffScreenViewer(self.model, self.data)
+                self.viewer = BiGymOffScreenViewer(self.model, self.data)
             else:
                 raise AttributeError(
                     f"Unexpected mode: {render_mode}, "
@@ -49,12 +49,35 @@ class BiGymRenderer(MujocoRenderer):
         return self._get_viewer(render_mode)
 
 
+class BiGymOffScreenViewer(OffScreenViewer):
+    """Custom mujoco_rendering.OffScreenViewer with safe teardown."""
+
+    def free(self):
+        """See base."""
+        opengl_context = getattr(self, "opengl_context", None)
+        if opengl_context is not None:
+            opengl_context.free()
+            self.opengl_context = None
+
+    def close(self):
+        """See base."""
+        # glfw.terminate() is process-global and shared with the human viewer
+        # and other envs, so free this context only.
+        self.free()
+
+
 class BiGymWindowViewer(WindowViewer):
     """Custom mujoco_rendering.WindowViewer with fixes.
 
     Notes:
         - Fixes GUI overlap when viewer is paused.
     """
+
+    def close(self):
+        """See base."""
+        # glfw.terminate() is process-global and shared with the offscreen
+        # viewer and other envs, so free this window only.
+        self.free()
 
     def render(self):
         """See base."""
