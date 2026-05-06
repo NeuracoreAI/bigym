@@ -37,7 +37,7 @@ core_requirements = [
     "mojo @ git+https://git@github.com/stepjam/mojo.git@0.1.1",
     "pyyaml",
     "dearpygui",
-    "pyopenxr",
+    "pyopenxr<1.1.5001",
 ]
 
 setuptools.setup(

@@ -10,26 +10,33 @@ jobs:
   bigym:
     runs-on: ubuntu-22.04
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libxml2-utils xvfb libgl1-mesa-dev libgl1-mesa-glx libosmesa6-dev
-        python -m pip install --upgrade pip
-        pip install ".[dev]"
-        pip install pre-commit
-    - name: Run pre-commit checks
-      run: pre-commit run --all-files
-    - name: Start Xvfb
-      run: |
-        Xvfb :99 -ac &
-        echo "DISPLAY=:99" >> $GITHUB_ENV
-    - name: Run tests
-      env:
-        DISPLAY: :99
-      run: pytest tests/
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxml2-utils \
+            xvfb \
+            xauth \
+            libgl1-mesa-dev \
+            libgl1-mesa-glx \
+            libosmesa6-dev
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+          pip install pre-commit
+      - name: Run pre-commit checks
+        run: pre-commit run --all-files
+      - name: Run tests
+        env:
+          MUJOCO_GL: osmesa
+        run: |
+          xvfb-run -a -s "-screen 0 1280x1024x24 -ac" \
+            pytest tests/ \
+            -s \
+            -v \
+            --log-cli-level=INFO
