@@ -1,0 +1,57 @@
+name: PR Changelog Reminder
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - labeled
+      - unlabeled
+      - synchronize
+
+jobs:
+  suggest-changelog-update:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'version:major') ||
+      contains(github.event.pull_request.labels.*.name, 'version:minor') ||
+      contains(github.event.pull_request.labels.*.name, 'version:patch')
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Check for existing comment and post reminder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const commentIdentifier = '<!-- changelog-reminder-bot -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const existingComment = comments.find(comment =>
+              comment.body.includes(commentIdentifier)
+            );
+
+            if (existingComment) {
+              console.log('Reminder comment already exists - skipping');
+              return;
+            }
+
+            const commentBody = commentIdentifier + '\n\n' +
+              'Consider updating `CHANGELOG.md` under the `[Unreleased]` section with a summary of this change for the release notes. This is optional and non-blocking.';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+            console.log('Posted changelog reminder comment');
