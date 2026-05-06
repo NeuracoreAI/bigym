@@ -54,7 +54,13 @@ setuptools.setup(
         + [str(p.resolve()) for p in Path("vr/viewer/xmls").glob("**/*")]
     },
     extras_require={
-        "dev": ["pre-commit", "pytest"],
+        "dev": [
+            "pre-commit",
+            "pytest",
+            "pytest-cov",
+            "pytest-rerunfailures",
+            "pytest-xdist",
+        ],
         "examples": [
             "moviepy",
             "pygame",
