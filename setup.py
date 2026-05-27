@@ -23,8 +23,8 @@ def get_version(rel_path):
 core_requirements = [
     # includes bugfix in mujoco_rendering
     "gymnasium @ git+https://git@github.com/stepjam/Gymnasium.git@0.29.2",
-    # pyquaternion doesn't support 2.x yet
-    "numpy==1.26.*",
+    # Allow NumPy 2.x to resolve Neuracore dependencies
+    "numpy>=2.0.0",
     "safetensors==0.6.2",
     # WARNING: recorded demos might break when updating Mujoco
     "mujoco==3.1.5",
