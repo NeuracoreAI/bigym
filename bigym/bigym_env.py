@@ -477,9 +477,19 @@ class BiGymEnv(gym.Env):
 
     def _fail(self) -> bool:
         """Check if the episode is failed."""
-        return (
-            np.linalg.norm(self._robot.pelvis.get_position()) > MAX_DISTANCE_FROM_ORIGIN
-        )
+        if self._robot.floating_base:
+            pelvis_position = np.zeros(3)
+            pelvis_bind = self._mojo.physics.bind(self._robot.pelvis.mjcf)
+            for i, actuator in enumerate(self._robot.floating_base.position_actuators):
+                if actuator:
+                    pelvis_position[i] = self._mojo.physics.bind(
+                        actuator.joint
+                    ).qpos.item()
+                else:
+                    pelvis_position[i] = pelvis_bind.pos[i]
+        else:
+            pelvis_position = self._robot.pelvis.get_position()
+        return np.linalg.norm(pelvis_position) > MAX_DISTANCE_FROM_ORIGIN
 
     def _reward(self) -> float:
         """Get current episode reward."""
