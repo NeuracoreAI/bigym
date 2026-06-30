@@ -8,7 +8,7 @@ from bigym.envs.move_plates import MovePlate
 
 
 @pytest.mark.parametrize(
-    "action_mode_class,",
+    "action_mode_class",
     [JointPositionActionMode],
 )
 class TestMovePlate:

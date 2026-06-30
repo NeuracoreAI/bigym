@@ -11,15 +11,15 @@ from bigym.utils.observation_config import CameraConfig, ObservationConfig
 
 
 @pytest.mark.parametrize(
-    "rgb,",
+    "rgb",
     [True, False],
 )
 @pytest.mark.parametrize(
-    "depth,",
+    "depth",
     [True, False],
 )
 @pytest.mark.parametrize(
-    "resolution,",
+    "resolution",
     [(4, 4), (8, 8)],
 )
 class TestObservations:

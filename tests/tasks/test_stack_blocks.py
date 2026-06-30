@@ -7,7 +7,7 @@ from bigym.envs.manipulation import StackBlocks
 
 
 @pytest.mark.parametrize(
-    "action_mode_class,",
+    "action_mode_class",
     [JointPositionActionMode],
 )
 class TestStackBlocks:
