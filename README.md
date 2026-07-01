@@ -3,8 +3,8 @@
 </h1>
 
 <p>
-  <a href="https://github.com/chernyadev/bigym/actions/workflows/build.yaml?query=branch%3Amaster" alt="GitHub Actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/chernyadev/bigym/build.yaml?branch=master">
+  <a href="https://github.com/NeuracoreAI/bigym/actions/workflows/build.yaml?query=branch%3Amaster" alt="GitHub Actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/NeuracoreAI/bigym/build.yaml?branch=master">
   </a>
   <a href="#contributing">
     <img src="https://img.shields.io/badge/PRs-welcome-green.svg" alt="PRs" height="20">
@@ -17,7 +17,7 @@
 BiGym is a new benchmark and learning environment for mobile bi-manual demo-driven robotic manipulation.
 BiGym features 40 diverse tasks set in home environments, ranging from simple target reaching to complex kitchen cleaning. To capture the real-world performance accurately, we provide human-collected demonstrations for each task, reflecting the diverse modalities found in real-world robot trajectories. BiGym supports a variety of observations, including proprioceptive data and visual inputs such as RGB, and depth from 3 camera views.
 
-For latest updates, check our project page: [https://chernyadev.github.io/bigym/](https://chernyadev.github.io/bigym/)
+Check out the project page: [https://chernyadev.github.io/bigym/](https://chernyadev.github.io/bigym/), and follow the repository for the latest updates: [https://github.com/NeuracoreAI/bigym](https://github.com/NeuracoreAI/bigym).
 
 ## Table of Contents
 
