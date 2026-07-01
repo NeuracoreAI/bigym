@@ -165,9 +165,10 @@ class DemoStore:
         files = list(demos_dir.glob(f"*{SAFETENSORS_SUFFIX}"))
         if amount > len(files):
             raise TooManyDemosRequestedError(amount, len(files))
-        elif amount > 0:
-            files = files[:amount]
+
         np.random.shuffle(files)
+        if amount > 0:
+            files = files[:amount]
         return [Demo.from_safetensors(file) for file in files]
 
     def _get_demos_count(self, demos_dir: Path) -> int:
