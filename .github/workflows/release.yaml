@@ -1,0 +1,382 @@
+name: Release
+run-name: ${{ inputs.emergency_deploy && 'Release (Emergency)' || (inputs.dry_run && 'Release (Dry Run)' || 'Release') }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (only show what would happen, no commits/pushes/publishing)'
+        required: false
+        type: boolean
+        default: false
+      emergency_deploy:
+        description: '⚠️ Emergency deploy - bypasses tag format and release verification checks'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  analyze-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.analyze.outputs.should_release }}
+      bump_type: ${{ steps.analyze.outputs.bump_type }}
+      pr_data: ${{ steps.analyze.outputs.pr_data }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.emergency_deploy && github.ref_name || 'master' }}
+        fetch-depth: 0
+
+    - name: Get latest release tag
+      id: get_tag
+      if: ${{ !inputs.emergency_deploy }}
+      run: |
+        LATEST_TAG=$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null || echo "")
+        if [ -z "$LATEST_TAG" ]; then
+          echo "ERROR: No previous release tag found"
+          exit 1
+        fi
+        echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+        echo "Found latest release tag: $LATEST_TAG"
+
+    - name: Check for new commits since last tag
+      if: ${{ !inputs.emergency_deploy }}
+      run: |
+        COMMITS_SINCE=$(git rev-list --count ${{ steps.get_tag.outputs.latest_tag }}..HEAD)
+        if [ "$COMMITS_SINCE" -eq 0 ]; then
+          echo "ERROR: No new commits on master since ${{ steps.get_tag.outputs.latest_tag }}"
+          exit 1
+        fi
+        echo "$COMMITS_SINCE new commits on master since ${{ steps.get_tag.outputs.latest_tag }}"
+
+    - name: Get PRs merged to master since last release
+      id: get_prs
+      if: ${{ !inputs.emergency_deploy }}
+      run: |
+        TAG="${{ steps.get_tag.outputs.latest_tag }}"
+        PR_NUMBERS=$(
+          git log "$TAG..HEAD" --pretty=format:%s |
+          grep -oE '\(#[0-9]+\)' |
+          grep -oE '[0-9]+' |
+          sort -n | uniq |
+          jq -R . | jq -s -c .
+        )
+        echo "Found PRs: $PR_NUMBERS"
+        echo "pr_numbers=$PR_NUMBERS" >> "$GITHUB_OUTPUT"
+
+    - name: Fetch PR data and determine version bump
+      id: analyze
+      uses: actions/github-script@v7
+      env:
+        PR_NUMBERS: ${{ steps.get_prs.outputs.pr_numbers || '[]' }}
+        EMERGENCY: ${{ inputs.emergency_deploy }}
+      with:
+        script: |
+          if (process.env.EMERGENCY === 'true') {
+            core.setOutput('should_release', true);
+            core.setOutput('bump_type', 'patch');
+            core.setOutput('pr_data', '[]');
+            console.log('Emergency deploy: forcing a patch release and skipping PR/label verification');
+            return;
+          }
+
+          const prNumbers = JSON.parse(process.env.PR_NUMBERS);
+          const versionLabels = ['version:major', 'version:minor', 'version:patch', 'version:none'];
+          const versionPriority = { major: 4, minor: 3, patch: 2, none: 1 };
+
+          let highestBump = 'none';
+          let highestPriority = 0;
+          const prData = [];
+
+          for (const prNumber of prNumbers) {
+            try {
+              const pr = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+
+              const labels = pr.data.labels.map(l => l.name);
+              const versionLabel = labels.find(l => versionLabels.includes(l));
+              if (!versionLabel) {
+                console.log(`Warning: PR #${prNumber} has no version label, defaulting to 'none'`);
+              }
+
+              const bumpType = versionLabel ? versionLabel.split(':')[1] : 'none';
+              const priority = versionPriority[bumpType] || 0;
+              if (priority > highestPriority) {
+                highestPriority = priority;
+                highestBump = bumpType;
+              }
+
+              prData.push({
+                number: prNumber,
+                title: pr.data.title,
+                author: pr.data.user.login,
+                url: pr.data.html_url,
+                bump_type: bumpType
+              });
+            } catch (error) {
+              console.log(`Error fetching PR #${prNumber}: ${error.message}`);
+            }
+          }
+
+          const shouldRelease = highestBump !== 'none';
+          core.setOutput('should_release', shouldRelease);
+          core.setOutput('bump_type', highestBump);
+          core.setOutput('pr_data', JSON.stringify(prData));
+
+          console.log(`Version bump: ${highestBump}`);
+          console.log(`Should release: ${shouldRelease}`);
+          console.log(`Total PRs analyzed: ${prData.length}`);
+
+  generate-changelog:
+    needs: analyze-changes
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.calc_version.outputs.new_version }}
+      changelog_content: ${{ steps.generate.outputs.changelog_content }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.emergency_deploy && github.ref_name || 'master' }}
+        fetch-depth: 0
+
+    - name: Calculate new version
+      id: calc_version
+      env:
+        BUMP_TYPE: ${{ needs.analyze-changes.outputs.bump_type }}
+      run: |
+        CURRENT_VERSION=$(grep -m 1 '^version = ' pyproject.toml | cut -d'"' -f2)
+        echo "Current version: $CURRENT_VERSION"
+        echo "Bump type: $BUMP_TYPE"
+
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+        case $BUMP_TYPE in
+          major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+          minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+          patch) PATCH=$((PATCH + 1)) ;;
+          none) echo "No version bump (type: none)" ;;
+          *) echo "ERROR: Invalid bump type: $BUMP_TYPE"; exit 1 ;;
+        esac
+
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+        echo "New version will be: $NEW_VERSION"
+
+    - name: Read pending changelog
+      id: read_pending
+      run: |
+        if [ -f "changelogs/pending-changelog.md" ]; then
+          PENDING_CONTENT=$(cat changelogs/pending-changelog.md |
+            grep -v '^\[' | grep -v '<!--' | grep -v '-->' |
+            sed 's/^# Pending Release Notes//')
+          if echo "$PENDING_CONTENT" | grep -qv '^#'; then
+            echo "Found pending changelog content"
+            echo "pending_content=$(echo "$PENDING_CONTENT" | jq -Rs .)" >> "$GITHUB_OUTPUT"
+          else
+            echo "pending_content=\"\"" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo "pending_content=\"\"" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate changelog
+      id: generate
+      uses: actions/github-script@v7
+      env:
+        PENDING_CONTENT: ${{ steps.read_pending.outputs.pending_content }}
+        PR_DATA: ${{ needs.analyze-changes.outputs.pr_data }}
+      with:
+        script: |
+          const version = '${{ steps.calc_version.outputs.new_version }}';
+          const prData = JSON.parse(process.env.PR_DATA);
+          const pendingContent = process.env.PENDING_CONTENT ? JSON.parse(process.env.PENDING_CONTENT) : '';
+          const date = new Date().toISOString().split('T')[0];
+
+          const groups = { breaking: [], features: [], fixes: [], other: [] };
+          for (const pr of prData) {
+            switch (pr.bump_type) {
+              case 'major': groups.breaking.push(pr); break;
+              case 'minor': groups.features.push(pr); break;
+              case 'patch': groups.fixes.push(pr); break;
+              default: groups.other.push(pr);
+            }
+          }
+
+          let changelog = `# Release v${version} - ${date}\n\n`;
+          if (pendingContent && pendingContent.trim()) {
+            changelog += `## Summary\n\n${pendingContent.trim()}\n\n---\n\n`;
+          }
+
+          const section = (title, prs) => {
+            if (prs.length === 0) return '';
+            let out = `## ${title}\n\n`;
+            for (const pr of prs.sort((a, b) => a.number - b.number)) {
+              out += `- **${pr.title}** ([#${pr.number}](${pr.url})) by @${pr.author}\n`;
+            }
+            return out + '\n';
+          };
+
+          changelog += section('Breaking Changes', groups.breaking);
+          changelog += section('Features', groups.features);
+          changelog += section('Bug Fixes', groups.fixes);
+          changelog += section('Other Changes', groups.other);
+
+          changelog += `---\n\n`;
+          changelog += `**Installation:**\n\`\`\`bash\npip install bigym==${version}\n\`\`\`\n\n`;
+          changelog += `**Links:**\n`;
+          changelog += `- PyPI: https://pypi.org/project/bigym/${version}/\n`;
+          changelog += `- GitHub Release: https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}\n`;
+
+          core.setOutput('changelog_content', changelog);
+
+  release:
+    needs: [analyze-changes, generate-changelog]
+    if: (needs.analyze-changes.outputs.should_release == 'true' || inputs.emergency_deploy) && inputs.dry_run == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Generate GitHub App Token
+      id: generate-token
+      uses: actions/create-github-app-token@v3
+      with:
+        app-id: ${{ vars.NC_VERSION_BUMPER_APP_ID }}
+        private-key: ${{ secrets.NC_VERSION_BUMPER_PRIVATE_KEY }}
+
+    - name: Checkout code
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.emergency_deploy && github.ref_name || 'master' }}
+        token: ${{ steps.generate-token.outputs.token }}
+        fetch-depth: 0
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.2.0
+      with:
+        python-version: "3.11"
+
+    - name: Bump version
+      run: |
+        NEW_VERSION="${{ needs.generate-changelog.outputs.new_version }}"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name "github-actions[bot]"
+        uv version "$NEW_VERSION"
+        echo "Bumped to version: $NEW_VERSION"
+
+    - name: Reset pending changelog
+      run: cp changelogs/template.md changelogs/pending-changelog.md
+
+    - name: Commit and push version bump
+      run: |
+        NEW_VERSION="${{ needs.generate-changelog.outputs.new_version }}"
+        git add pyproject.toml changelogs/pending-changelog.md
+        git commit -m "Bump version to v${NEW_VERSION} [skip ci]"
+        TARGET_BRANCH="${{ inputs.emergency_deploy && github.ref_name || 'master' }}"
+        git push origin "HEAD:${TARGET_BRANCH}"
+
+    - name: Build package
+      run: uv build
+
+    - name: Check package
+      run: uvx twine check dist/*
+
+    - name: Publish to PyPI
+      env:
+        UV_PUBLISH_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        UV_PUBLISH_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: uv publish
+
+    - name: Create git tag
+      run: |
+        TAG_NAME="v${{ needs.generate-changelog.outputs.new_version }}"
+        if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+          echo "Tag $TAG_NAME already exists, skipping"
+        else
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
+          echo "Created and pushed tag: $TAG_NAME"
+        fi
+
+    - name: Create GitHub Release
+      uses: actions/github-script@v7
+      env:
+        CHANGELOG_CONTENT: ${{ needs.generate-changelog.outputs.changelog_content }}
+      with:
+        script: |
+          const version = '${{ needs.generate-changelog.outputs.new_version }}';
+          const tagName = `v${version}`;
+          try {
+            await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner, repo: context.repo.repo, tag: tagName
+            });
+            console.log(`Release ${tagName} already exists, skipping`);
+            return;
+          } catch (error) {
+            if (error.status !== 404) throw error;
+          }
+          const release = await github.rest.repos.createRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag_name: tagName,
+            name: `Release v${version}`,
+            body: process.env.CHANGELOG_CONTENT,
+            draft: false,
+            prerelease: false
+          });
+          console.log(`Created GitHub Release: ${release.data.html_url}`);
+
+  dry-run-summary:
+    needs: [analyze-changes, generate-changelog]
+    if: inputs.dry_run == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Generate dry run summary
+      uses: actions/github-script@v7
+      env:
+        CHANGELOG_CONTENT: ${{ needs.generate-changelog.outputs.changelog_content }}
+      with:
+        script: |
+          const shouldRelease = '${{ needs.analyze-changes.outputs.should_release }}' === 'true';
+          const bumpType = '${{ needs.analyze-changes.outputs.bump_type }}';
+          const newVersion = '${{ needs.generate-changelog.outputs.new_version }}';
+          const changelogContent = process.env.CHANGELOG_CONTENT || '';
+          const fs = require('fs');
+
+          let summary = '';
+          if (!shouldRelease) {
+            summary += '# No Release Needed\n\n';
+            summary += 'All PRs merged to master since the last release have `version:none` label.\n\n';
+            summary += '---\n\n## Changelog Preview\n\n' + changelogContent;
+          } else {
+            summary += '# Dry Run Complete\n\n**This was a DRY RUN** - no changes were made\n\n';
+            summary += '## What Would Happen\n\n';
+            summary += `- **Version Bump:** \`${bumpType}\` -> \`${newVersion}\`\n`;
+            summary += '- Version updated in `pyproject.toml`\n';
+            summary += '- Changes committed and pushed to `master`\n';
+            summary += '- Package published to PyPI\n';
+            summary += `- Git tag \`v${newVersion}\` created\n`;
+            summary += '- GitHub Release created\n\n---\n\n## Changelog Preview\n\n' + changelogContent;
+            summary += '\n---\n\n**To perform the actual release:** run this workflow again without `dry_run`.\n';
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+
+  no-release-needed:
+    needs: [analyze-changes, generate-changelog]
+    if: always() && needs.analyze-changes.outputs.should_release != 'true' && inputs.dry_run == false && inputs.emergency_deploy == false
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Fail - no release needed
+      run: |
+        echo "ERROR: Cannot create a release - all PRs have version:none label"
+        echo "Run with dry_run: true to see what would be released"
+        exit 1

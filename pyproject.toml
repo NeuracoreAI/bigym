@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bigym"
+version = "4.1.0"
+description = "BiGym: A Demo-Driven Mobile Bi-Manual Manipulation Benchmark"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Nikita Cherniadev", email = "nikita.chernyadev@gmail.com" }
+]
+keywords = [
+    "robotics",
+    "reinforcement-learning",
+    "benchmark",
+    "manipulation",
+    "mujoco",
+    "gymnasium",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "gymnasium>=1.0.0",
+    "numpy>=2.0",
+    "safetensors==0.6.2",
+    # WARNING: recorded demos might break when updating MuJoCo
+    "mujoco>3",
+    # needed for pyMJCF
+    "dm_control>=1.0.43",
+    "imageio",
+    "pyquaternion",
+    "mujoco_utils",
+    "wget",
+    "mojo-mujoco-wrapper>=0.1.1",
+    "pyyaml",
+    "dearpygui",
+    "pyopenxr<1.1.5001",
+]
+
+[project.optional-dependencies]
+dev = ["pre-commit", "pytest"]
+examples = [
+    "moviepy",
+    "pygame",
+    "opencv-python",
+    "matplotlib",
+]
+all = ["bigym[dev,examples]"]
+
+[project.urls]
+Homepage = "https://chernyadev.github.io/bigym/"
+Documentation = "https://github.com/NeuracoreAI/bigym#readme"
+Repository = "https://github.com/NeuracoreAI/bigym"
+"Bug Tracker" = "https://github.com/NeuracoreAI/bigym/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["bigym", "demonstrations", "tools", "vr"]
