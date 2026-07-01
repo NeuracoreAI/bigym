@@ -22,13 +22,12 @@ def get_version(rel_path):
 
 core_requirements = [
     "gymnasium>=1.0.0",
-    # pyquaternion doesn't support 2.x yet
-    "numpy==1.26.*",
+    "numpy>=2.0",
     "safetensors==0.6.2",
     # WARNING: recorded demos might break when updating Mujoco
-    "mujoco==3.1.5",
+    "mujoco>3",
     # needed for pyMJCF
-    "dm_control==1.0.19",
+    "dm_control>=1.0.43",
     "imageio",
     "pyquaternion",
     "mujoco_utils",
