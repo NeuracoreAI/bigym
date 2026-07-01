@@ -29,3 +29,7 @@ pip-delete-this-directory.txt
 
 # VSCode
 .vscode
+
+# uv
+uv.lock
+.venv

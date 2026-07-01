@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -26,17 +26,19 @@ jobs:
             libgl1-mesa-dev \
             libgl1-mesa-glx \
             libosmesa6-dev
-          python -m pip install --upgrade pip
-          pip install ".[dev]"
-          pip install pre-commit
+          uv sync --extra dev
       - name: Run pre-commit checks
-        run: pre-commit run --all-files
+        run: uv run pre-commit run --all-files
       - name: Run tests
         env:
           MUJOCO_GL: osmesa
         run: |
           xvfb-run -a -s "-screen 0 1280x1024x24 -ac" \
-            pytest tests/ \
+            uv run pytest tests/ \
             -s \
             -v \
             --log-cli-level=INFO
+      - name: Build and check package
+        run: |
+          uv build
+          uvx twine check dist/*
