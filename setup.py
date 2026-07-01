@@ -33,7 +33,7 @@ core_requirements = [
     "pyquaternion",
     "mujoco_utils",
     "wget",
-    "mojo @ git+https://git@github.com/stepjam/mojo.git@0.1.1",
+    "mojo-mujoco-wrapper>=0.1.1",
     "pyyaml",
     "dearpygui",
     "pyopenxr<1.1.5001",
