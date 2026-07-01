@@ -21,17 +21,32 @@ class BiGymRenderer(MujocoRenderer):
 
     def __init__(self, mojo: Mojo):
         """Init."""
-        super().__init__(mojo.model, mojo.data)
+        super().__init__(
+            mojo.model,
+            mojo.data,
+            width=mojo.model.vis.global_.offwidth,
+            height=mojo.model.vis.global_.offheight,
+        )
 
     def _get_viewer(self, render_mode: str) -> BaseRender:
         """See base."""
         self.viewer = self._viewers.get(render_mode)
         if self.viewer is None:
             if render_mode == "human":
-                self.viewer = BiGymWindowViewer(self.model, self.data)
+                self.viewer = BiGymWindowViewer(
+                    self.model,
+                    self.data,
+                    width=self.width,
+                    height=self.height,
+                )
 
             elif render_mode in {"rgb_array", "depth_array"}:
-                self.viewer = OffScreenViewer(self.model, self.data)
+                self.viewer = OffScreenViewer(
+                    self.model,
+                    self.data,
+                    width=self.width,
+                    height=self.height,
+                )
             else:
                 raise AttributeError(
                     f"Unexpected mode: {render_mode}, "
