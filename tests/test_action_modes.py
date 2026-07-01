@@ -62,7 +62,7 @@ def test_floating_base():
 
 
 @pytest.mark.parametrize(
-    "action_mode,",
+    "action_mode",
     [
         TorqueActionMode(floating_base=True),
         JointPositionActionMode(floating_base=True, absolute=False),

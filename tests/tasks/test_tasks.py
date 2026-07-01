@@ -8,11 +8,11 @@ from tools.shared.utils import ENVIRONMENTS
 
 
 @pytest.mark.parametrize(
-    "env_class,",
+    "env_class",
     ENVIRONMENTS.values(),
 )
 @pytest.mark.parametrize(
-    "action_mode_class,",
+    "action_mode_class",
     [JointPositionActionMode],
 )
 @pytest.mark.slow

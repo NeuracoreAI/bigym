@@ -15,11 +15,11 @@ from vr.viewer.control_profiles.h1_floating import H1Floating
 
 
 @pytest.mark.parametrize(
-    "env_class,",
+    "env_class",
     [ReachTarget, MovePlate, StackBlocks],
 )
 @pytest.mark.parametrize(
-    "action_mode_class,",
+    "action_mode_class",
     [TorqueActionMode, JointPositionActionMode],
 )
 class TestEnvs:
