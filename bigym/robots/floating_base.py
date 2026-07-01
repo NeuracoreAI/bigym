@@ -204,7 +204,7 @@ class RobotFloatingBase:
     def _pelvis_z(self) -> float:
         if self._position_actuators[2]:
             joint = self._mojo.physics.bind(self._position_actuators[2].joint)
-            return float(joint.qpos)
+            return float(joint.qpos.item())
         else:
             pelvis = self._mojo.physics.bind(self._pelvis.mjcf)
             return float(pelvis.pos[2])
